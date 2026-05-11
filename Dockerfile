@@ -24,6 +24,8 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
+RUN git clone https://github.com/PancaSolva/Asentinel.git .
+
 COPY composer.json composer.lock ./
 
 RUN composer install \
