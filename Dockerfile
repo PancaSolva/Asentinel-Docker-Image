@@ -1,5 +1,6 @@
 FROM php:8.2-fpm
 
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -24,6 +25,8 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
+RUN rm -rf /var/www/*
+
 RUN git clone https://github.com/PancaSolva/Asentinel.git .
 
 RUN composer install \
@@ -32,12 +35,9 @@ RUN composer install \
     --no-interaction \
     --optimize-autoloader
 
-COPY . .
+RUN chown -R www-data:www-data /var/www
 
-RUN chown -R www-data:www-data \
-    storage \
-    bootstrap/cache
-
+RUN chmod -R 775 storage bootstrap/cache
 RUN php artisan config:cache || true
 RUN php artisan route:cache || true
 RUN php artisan view:cache || true
