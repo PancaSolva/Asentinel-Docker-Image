@@ -1,6 +1,5 @@
 FROM php:8.2-fpm
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -10,16 +9,29 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libonig-dev \
     libxml2-dev \
+    libicu-dev \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Configure GD
+RUN docker-php-ext-configure gd \
+    --with-freetype \
+    --with-jpeg
+
+# Install PHP extensions
 RUN docker-php-ext-install \
     pdo \
     pdo_mysql \
+    pdo_pgsql \
     mbstring \
     exif \
     pcntl \
     bcmath \
-    zip
+    zip \
+    intl \
+    gd
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
@@ -33,14 +45,12 @@ RUN composer install \
     --no-dev \
     --prefer-dist \
     --no-interaction \
-    --optimize-autoloader
+    --optimize-autoloader \
+    -vvv
 
 RUN chown -R www-data:www-data /var/www
 
-RUN chmod -R 775 storage bootstrap/cache
-RUN php artisan config:cache || true
-RUN php artisan route:cache || true
-RUN php artisan view:cache || true
+RUN chmod -R 775 storage bootstrap/cache || true
 
 EXPOSE 9000
 
