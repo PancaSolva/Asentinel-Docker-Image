@@ -26,8 +26,6 @@ WORKDIR /var/www
 
 RUN git clone https://github.com/PancaSolva/Asentinel.git .
 
-COPY composer.json composer.lock ./
-
 RUN composer install \
     --no-dev \
     --prefer-dist \
