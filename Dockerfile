@@ -1,27 +1,47 @@
-FROM php:8.2-cli
+FROM php:8.2-fpm
 
 RUN apt-get update && apt-get install -y \
-    curl \
-    wget \
     git \
+    curl \
     zip \
     unzip \
     libpq-dev \
+    libzip-dev \
+    libonig-dev \
+    libxml2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath
+RUN docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    zip
 
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
-COPY composer.json composer.lock /var/www/
+COPY composer.json composer.lock ./
 
+RUN composer install \
+    --no-dev \
+    --prefer-dist \
+    --no-interaction \
+    --optimize-autoloader
 
-COPY . /var/www
+COPY . .
 
-RUN composer install --prefer-dist --no-interaction --optimize-autoloader
+RUN chown -R www-data:www-data \
+    storage \
+    bootstrap/cache
 
-RUN chown -R www-data:www-data /var/www
+RUN php artisan config:cache || true
+RUN php artisan route:cache || true
+RUN php artisan view:cache || true
+
+EXPOSE 9000
 
 CMD ["php-fpm"]
