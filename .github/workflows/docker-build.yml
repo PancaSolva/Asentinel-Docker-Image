@@ -18,7 +18,7 @@ env:
   # Use docker.io for Docker Hub
   REGISTRY: docker.io
   # We will use your Docker Hub username and the app name
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/asentinel
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/Asentinel
 
 jobs:
   build:
