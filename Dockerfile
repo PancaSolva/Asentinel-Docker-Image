@@ -53,6 +53,8 @@ RUN composer install \
     --optimize-autoloader \
     || true
 
+RUN composer update 
+
 RUN npm install
 
 RUN npm run build
