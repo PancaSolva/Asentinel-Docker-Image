@@ -50,6 +50,10 @@ RUN composer install \
     --optimize-autoloader \
     || true
 
+RUN npm install
+
+RUN npm run build
+
 RUN chown -R www-data:www-data /var/www
 
 RUN chmod -R 775 storage bootstrap/cache || true
