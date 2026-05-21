@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.3-fpm
 
 RUN apt-get update && apt-get install -y \
     git \
@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg62-turbo-dev \
     libfreetype6-dev \
+    nodejs \
+    npm \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure GD
@@ -49,6 +52,12 @@ RUN composer install \
     --no-interaction \
     --optimize-autoloader \
     || true
+
+RUN composer update 
+
+RUN npm install
+
+RUN npm run build
 
 RUN chown -R www-data:www-data /var/www
 
