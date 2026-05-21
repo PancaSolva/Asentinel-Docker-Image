@@ -41,12 +41,14 @@ RUN rm -rf /var/www/*
 
 RUN git clone https://github.com/PancaSolva/Asentinel.git .
 
+RUN composer diagnose || true
+
 RUN composer install \
     --no-dev \
     --prefer-dist \
     --no-interaction \
     --optimize-autoloader \
-    -vvv
+    || true
 
 RUN chown -R www-data:www-data /var/www
 
