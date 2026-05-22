@@ -59,6 +59,8 @@ RUN npm install
 
 RUN npm run build
 
+RUN php artisan migrate
+
 RUN chown -R www-data:www-data /var/www
 
 RUN chmod -R 775 storage bootstrap/cache || true

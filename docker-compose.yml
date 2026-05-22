@@ -1,32 +1,185 @@
-services:
-  ai-service:
-    build: .
-    container_name: ai-service
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    depends_on:
-      - db
-    networks:
-      - backend
+version: "3.9"
 
-  db:
+services:
+  mysql:
     image: mysql:8.0
-    container_name: mysql-db
-    restart: always
+    container_name: asentinel-mysql
+
+    restart: unless-stopped
+
     environment:
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: Asentinel
+      MYSQL_USER: asentinel
+      MYSQL_PASSWORD: asentinelpass
+
     ports:
       - "3306:3306"
-    networks:
-      - backend
+
     volumes:
-      - db_data:/var/lib/mysql
+      - mysql_data:/var/lib/mysql
+
+    networks:
+      - asentinel-network
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: asentinel-redis
+
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    networks:
+      - asentinel-network
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  asentinel-api:
+    image: hugobama/asentinel:latest
+    container_name: asentinel-api
+
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: asentinel
+      DB_PASS: asentinelpass
+      DB_NAME: Asentinel
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+    ports:
+      - "8000:8000"
+
+    command: >
+      uvicorn main:app
+      --host 0.0.0.0
+      --port 8000
+
+    volumes:
+      - asentinel_logs:/app/logs
+      - asentinel_models:/app/models
+      - asentinel_data:/app/data
+
+    networks:
+      - asentinel-network
+
+  asentinel-worker:
+    image: hugobama/asentinel:latest
+    container_name: asentinel-worker
+
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: asentinel
+      DB_PASS: asentinelpass
+      DB_NAME: Asentinel
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+    command: python worker.py
+
+    volumes:
+      - asentinel_logs:/app/logs
+      - asentinel_models:/app/models
+      - asentinel_data:/app/data
+
+    networks:
+      - asentinel-network
+
+  asentinel-scheduler:
+    image: hugobama/asentinel:latest
+    container_name: asentinel-scheduler
+
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: asentinel
+      DB_PASS: asentinelpass
+      DB_NAME: Asentinel
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+    command: python scheduler.py
+
+    volumes:
+      - asentinel_logs:/app/logs
+      - asentinel_models:/app/models
+      - asentinel_data:/app/data
+
+    networks:
+      - asentinel-network
+
+  nexus-ai:
+    image: hugobama/nexus:latest
+    container_name: nexus-ai
+
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: asentinel
+      DB_PASS: asentinelpass
+      DB_NAME: Asentinel
+
+    ports:
+      - "9000:9000"
+
+    networks:
+      - asentinel-network
 
 networks:
-  backend:
+  asentinel-network:
+    driver: bridge
 
 volumes:
-  db_data:
+  mysql_data:
+  asentinel_logs:
+  asentinel_models:
+  asentinel_data:
