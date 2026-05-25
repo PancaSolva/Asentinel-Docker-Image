@@ -57,7 +57,6 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: false
-      APP_KEY: base64:REPLACE_WITH_YOUR_KEY
 
       DB_CONNECTION: mysql
       DB_HOST: mysql
@@ -76,7 +75,21 @@ services:
     networks:
       - asentinel-network
 
-    command: sh -c "php artisan migrate --force && php-fpm -F"
+    command: >
+      sh -c "
+        if [ ! -f /var/www/.env ]; then
+          echo 'No .env found, copying from .env.example...' &&
+          cp /var/www/.env.example /var/www/.env;
+        fi &&
+        if ! grep -q 'APP_KEY=base64' /var/www/.env; then
+          echo 'No APP_KEY found, generating...' &&
+          php artisan key:generate --force;
+        else
+          echo 'APP_KEY already exists, skipping.';
+        fi &&
+        php artisan migrate --force &&
+        php-fpm -F
+      "
 
     volumes:
       - ~/Asentinel:/var/www
@@ -113,7 +126,6 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: false
-      APP_KEY: base64:REPLACE_WITH_YOUR_KEY
 
       DB_CONNECTION: mysql
       DB_HOST: mysql
@@ -125,6 +137,9 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       QUEUE_CONNECTION: redis
+
+    volumes:
+      - ~/Asentinel:/var/www
 
     command: php artisan queue:work
 
@@ -145,7 +160,6 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: false
-      APP_KEY: base64:REPLACE_WITH_YOUR_KEY
 
       DB_CONNECTION: mysql
       DB_HOST: mysql
@@ -158,13 +172,16 @@ services:
       REDIS_PORT: 6379
       QUEUE_CONNECTION: redis
 
+    volumes:
+      - ~/Asentinel:/var/www
+
     command: php artisan schedule:work
 
     networks:
       - asentinel-network
 
   nexus-ai:
-    image: hugobama/nexus:main   
+    image: hugobama/nexus:main
     container_name: nexus-ai
     restart: unless-stopped
 
