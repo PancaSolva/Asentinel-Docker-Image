@@ -1,32 +1,202 @@
 services:
-  ai-service:
-    build: .
-    container_name: ai-service
-    ports:
-      - "8000:8000"
-    env_file:
-      - .env
-    depends_on:
-      - db
-    networks:
-      - backend
-
-  db:
+  mysql:
     image: mysql:8.0
-    container_name: mysql-db
-    restart: always
+    container_name: asentinel-mysql
+    restart: unless-stopped
+
     environment:
-      MYSQL_ROOT_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: Asentinel
+      MYSQL_USER: asentinel
+      MYSQL_PASSWORD: asentinelpass
+
     ports:
       - "3306:3306"
-    networks:
-      - backend
+
     volumes:
-      - db_data:/var/lib/mysql
+      - /home/bama/mysql:/var/lib/mysql
+
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -proot || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 180s
+
+    networks:
+      - asentinel-network
+
+  redis:
+    image: redis:7
+    container_name: asentinel-redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+    networks:
+      - asentinel-network
+
+  asentinel-app:
+    image: hugobama/asentinel:main
+    container_name: asentinel-app
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    environment:
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_KEY: base64:REPLACE_WITH_YOUR_KEY
+
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: Asentinel
+      DB_USERNAME: asentinel
+      DB_PASSWORD: asentinelpass
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+
+    expose:
+      - "9000"
+
+    networks:
+      - asentinel-network
+
+    command: sh -c "php artisan migrate --force && php-fpm -F"
+
+    volumes:
+      - ~/Asentinel:/var/www
+
+  nginx:
+    image: nginx:latest
+    container_name: asentinel-nginx
+    restart: unless-stopped
+
+    depends_on:
+      - asentinel-app
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ~/Asentinel:/var/www:ro
+
+    networks:
+      - asentinel-network
+
+  asentinel-worker:
+    image: hugobama/asentinel:main
+    container_name: asentinel-worker
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    environment:
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_KEY: base64:REPLACE_WITH_YOUR_KEY
+
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: Asentinel
+      DB_USERNAME: asentinel
+      DB_PASSWORD: asentinelpass
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+
+    command: php artisan queue:work
+
+    networks:
+      - asentinel-network
+
+  asentinel-scheduler:
+    image: hugobama/asentinel:main
+    container_name: asentinel-scheduler
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    environment:
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_KEY: base64:REPLACE_WITH_YOUR_KEY
+
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: Asentinel
+      DB_USERNAME: asentinel
+      DB_PASSWORD: asentinelpass
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+
+    command: php artisan schedule:work
+
+    networks:
+      - asentinel-network
+
+  nexus-ai:
+    build:
+      context: ./nexus
+      dockerfile: Dockerfile
+    container_name: nexus-ai
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: Asentinel
+      DB_USER: asentinel
+      DB_PASS: asentinelpass
+
+      GROQ_API_KEY: REPLACE_WITH_YOUR_GROQ_KEY
+      LLM_MODEL: llama-3.3-70b-versatile
+      LLM_TEMPERATURE: 0.3
+      LLM_MAX_TOKENS: 500
+
+      TELEGRAM_BOT_TOKEN: REPLACE_WITH_YOUR_TOKEN
+      TELEGRAM_CHAT_ID: REPLACE_WITH_YOUR_CHAT_ID
+
+    ports:
+      - "5000:5000"
+
+    networks:
+      - asentinel-network
 
 networks:
-  backend:
-
-volumes:
-  db_data:
+  asentinel-network:
+    driver: bridge
