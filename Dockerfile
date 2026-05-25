@@ -1,7 +1,6 @@
-FROM php:8.3-fpm
+FROM php:8.4-fpm
 
 RUN apt-get update && apt-get install -y \
-    git \
     curl \
     zip \
     unzip \
@@ -38,7 +37,11 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
-RUN git clone https://github.com/PancaSolva/Asentinel.git .
+RUN curl -L https://github.com/PancaSolva/Asentinel/archive/refs/heads/main.zip -o app.zip \
+    && unzip app.zip \
+    && mv Asentinel-main/* . \
+    && mv Asentinel-main/.* . 2>/dev/null || true \
+    && rm -rf Asentinel-main app.zip
 
 RUN composer install \
     --no-dev \
