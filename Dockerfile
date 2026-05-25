@@ -1,17 +1,56 @@
-FROM python:3.11-slim
+FROM php:8.3-fpm
 
 RUN apt-get update && apt-get install -y \
-    gcc \
-    curl \
     git \
+    curl \
+    zip \
+    unzip \
+    libpq-dev \
+    libzip-dev \
+    libonig-dev \
+    libxml2-dev \
+    libicu-dev \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
+    nodejs \
+    npm \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
+RUN docker-php-ext-configure gd \
+    --with-freetype \
+    --with-jpeg
 
-RUN git clone https://github.com/PancaSolva/Nexus.git .
+RUN docker-php-ext-install \
+    pdo \
+    pdo_mysql \
+    pdo_pgsql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    zip \
+    intl \
+    gd
 
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-EXPOSE 5000
+WORKDIR /var/www
 
-CMD ["python", "main.py"]
+RUN git clone https://github.com/PancaSolva/Asentinel.git .
+
+RUN composer install \
+    --no-dev \
+    --prefer-dist \
+    --no-interaction \
+    --optimize-autoloader
+
+RUN npm install && npm run build
+
+RUN chown -R www-data:www-data /var/www
+RUN chmod -R 775 storage bootstrap/cache
+
+EXPOSE 9000
+
+CMD ["php-fpm"]

@@ -92,7 +92,7 @@ services:
       "
 
     volumes:
-      - ~/Asentinel:/var/www
+      - asentinel-env:/var/www/.env   # only persists the .env file
 
   nginx:
     image: nginx:latest
@@ -107,7 +107,6 @@ services:
 
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ~/Asentinel:/var/www:ro
 
     networks:
       - asentinel-network
@@ -139,7 +138,7 @@ services:
       QUEUE_CONNECTION: redis
 
     volumes:
-      - ~/Asentinel:/var/www
+      - asentinel-env:/var/www/.env   # reads the same .env as asentinel-app
 
     command: php artisan queue:work
 
@@ -173,7 +172,7 @@ services:
       QUEUE_CONNECTION: redis
 
     volumes:
-      - ~/Asentinel:/var/www
+      - asentinel-env:/var/www/.env   # reads the same .env as asentinel-app
 
     command: php artisan schedule:work
 
@@ -215,3 +214,6 @@ services:
 networks:
   asentinel-network:
     driver: bridge
+
+volumes:
+  asentinel-env:    # persists .env across container rebuilds
