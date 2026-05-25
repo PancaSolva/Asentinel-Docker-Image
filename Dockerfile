@@ -65,4 +65,5 @@ RUN chmod -R 775 storage bootstrap/cache || true
 
 EXPOSE 9000
 
+
 CMD ["php-fpm"]
