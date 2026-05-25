@@ -1,69 +1,17 @@
-FROM php:8.3-fpm
+FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y \
-    git \
+    gcc \
     curl \
-    zip \
-    unzip \
-    libpq-dev \
-    libzip-dev \
-    libonig-dev \
-    libxml2-dev \
-    libicu-dev \
-    libpng-dev \
-    libjpeg62-turbo-dev \
-    libfreetype6-dev \
-    nodejs \
-    npm \
-    build-essential \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Configure GD
-RUN docker-php-ext-configure gd \
-    --with-freetype \
-    --with-jpeg
+WORKDIR /app
 
-# Install PHP extensions
-RUN docker-php-ext-install \
-    pdo \
-    pdo_mysql \
-    pdo_pgsql \
-    mbstring \
-    exif \
-    pcntl \
-    bcmath \
-    zip \
-    intl \
-    gd
+RUN git clone https://github.com/YOUR_USERNAME/YOUR_NEXUS_REPO.git .
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+RUN pip install --no-cache-dir -r requirements.txt
 
-WORKDIR /var/www
+EXPOSE 5000
 
-RUN rm -rf /var/www/*
-
-RUN git clone https://github.com/PancaSolva/Asentinel.git .
-
-RUN composer diagnose || true
-
-RUN composer install \
-    --no-dev \
-    --prefer-dist \
-    --no-interaction \
-    --optimize-autoloader \
-    || true
-
-RUN composer update 
-
-RUN npm install
-
-RUN npm run build
-
-RUN chown -R www-data:www-data /var/www
-
-RUN chmod -R 775 storage bootstrap/cache || true
-
-EXPOSE 9000
-
-
-CMD ["php-fpm"]
+CMD ["python", "main.py"]
