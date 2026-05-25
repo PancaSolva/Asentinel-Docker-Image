@@ -164,9 +164,7 @@ services:
       - asentinel-network
 
   nexus-ai:
-    build:
-      context: ./nexus
-      dockerfile: Dockerfile
+    image: hugobama/nexus:main   
     container_name: nexus-ai
     restart: unless-stopped
 
