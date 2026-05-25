@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-RUN git clone https://github.com/YOUR_USERNAME/YOUR_NEXUS_REPO.git .
+RUN git clone https://github.com/PancaSolva/Nexus.git .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
